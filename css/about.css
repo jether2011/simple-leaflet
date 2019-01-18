@@ -1,0 +1,91 @@
+@charset "utf-8";
+/* CSS Document */
+
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: #006950;
+    border-color: #108d6f;
+    box-shadow: none;
+    outline: none;
+}
+
+.btn-primary {
+    color: #fff;
+    background-color: #108d6f;
+    border-color: #108d6f;
+}
+
+section {
+    padding: 30px 0;
+}
+
+section .titleb {
+    text-align: center;
+    color: #007b5e;
+    margin-bottom: 50px;
+    text-transform: uppercase;
+}
+
+.titlegreen {color: #fff;}
+
+.cardfront {
+    position: relative;
+    -webkit-transform: rotateY(0deg);
+    -ms-transform: rotateY(0deg);
+    z-index: 2;
+    margin-bottom: 30px;
+}
+
+
+.cardfront .card{
+    min-height: 312px;
+}
+
+.cardfront .card .card-title,
+.card-title {
+    color: #007b5e !important;
+}
+
+.cardfront .card .card-body img {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+}
+
+#other .card {
+	background: none !important;
+	border-color: #108d6f;
+}
+
+#other .card-title { color:#3fc3a3 !important;
+}
+
+#other .list-group-item { background: none !important; border: 0px !important; padding-left: 0px !important;}
+.msgn { color:#3fc3a3; font-size: 14px; padding: 15px; }
+
+.padding80 {
+    padding:80px;
+}
+
+.bgcolor-voilet {
+    background-color: #007b5e;
+    color:#fff;
+}
+
+.tmargin10 {
+ margin-top :10px;   
+}
+
+footer{
+   background-color: #004e3c;
+    height: 35px;
+    text-align: center;
+    color: #CCC;
+}
+
+footer p {
+    padding: 10.5px;
+    margin: 0px;
+    line-height: 100%;
+}
+footer a { color:#108d6f;}
