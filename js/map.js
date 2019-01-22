@@ -57,13 +57,13 @@ function initMap() {
     
     var options = {
         sortLayers : true,
-        collapsed : false
+        collapsed : true
     }
     
     let layers = ["yearly_deforestation_2013_2018", "accumulated_deforestation_1988_2012", "hydrography", "no_forest", "cloud", "brazilian_legal_amazon"
         , "estados", "prodes_cerrado_2000_2017_uf_mun", "limite_cerrado", "municipios_2017", "cerrado_mosaics"];
-    let host = "http://terrabrasilis.dpi.inpe.br/geoserver/gwc/service/wms";
-    //let host = "http://terrabrasilis2.dpi.inpe.br:10080/geoserver/gwc/service/wms";
+    
+    let host = "http://terrabrasilis.dpi.inpe.br/geoserver/gwc/service/wms";    
     let amz_workspace = "prodes-amz";
     let cerrado_workspace = "prodes-cerrado";
     
