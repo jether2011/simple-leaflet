@@ -1,60 +1,78 @@
 var map;
 var latitude = -55.685277;
 var longitude = -10.3;
+var host_api = "http://terrabrasilis2.dpi.inpe.br:13003/api/v1";
+
+let baseLayers = {};
+let overLayers = {};
 
 $( document ).ready(function() {
-	initMap();
+    loadMapOnly();	
 });
 
-function initMap() {
-	map = L.map('map', {
+function loadMapOnly() {
+    map = L.map('map', {
         scrollWheelZoom: true,
         fullscreenControl: {
             pseudoFullscreen: false
         },
     }).setView([longitude, latitude], 5);
-	
-	var openStreetMapBlackAndWhite = L.tileLayer('http://{s}.tiles.wmflabs.org/bw-mapnik/{z}/{x}/{y}.png', {
-        attribution: 'Map data &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-        maxZoom: 18,        
-        minZoom: 4
-    });
 
-    var googleSat = L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',{
-        maxZoom: 20,
-        subdomains:['mt0','mt1','mt2','mt3']
-    });
+    loadBaseLayers();
+}
 
-    var googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{
-        maxZoom: 20,
-        subdomains:['mt0','mt1','mt2','mt3']
-    });
+function loadBaseLayers() {
+    let api = this.host_api + "/vision/name/desforestation/all";
+    $.ajax({
+        url: api,
+        async: true,        
+    }).done(function (data) { 
+        let layers = new Array();
 
-    var googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{
-        maxZoom: 20,
-        subdomains:['mt0','mt1','mt2','mt3']
-    });
+        data.forEach(e => {
+            e.vision.layers.forEach(l => {
+                if(l.baselayer)
+                    layers.push(l);
+            });
 
-    var googleTerrain = L.tileLayer('http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}',{
-        maxZoom: 20,
-        subdomains:['mt0','mt1','mt2','mt3']
-    });
+            e.visions.forEach(e => {
+                e.layers.forEach(l => {
+                    if(l.baselayer)
+                        layers.push(l);
+                });                
+            });
+        });
 
-    var OpenTopoMap = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-    maxZoom: 17,
-    attribution: 'Map data: &copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)'
-    });
+        // console.log(layers);
 
-    var baseLayers = {
-        'OSM-Black' : openStreetMapBlackAndWhite,
-        'Google-Satellite' : googleSat,
-        'Google-Hybrid' : googleHybrid,
-        'Google-Streets' : googleStreets,
-        'Google-Terrain' : googleTerrain,
-        'OpenTopoMap' : OpenTopoMap
-    }    
-    baseLayers['Google-Satellite'].addTo(this.map);
-    
+        layers.forEach(l => {
+            let domains = new Array();
+            l.subdomains.forEach(s => {
+                domains.push(s.name);
+            });
+
+            let name = l.title;
+            let layer = L.tileLayer(l.datasource.host, {
+                maxZoom: 20,                
+                attribution: l.attribution,
+                subdomains: domains
+            });
+
+            if (l.active)
+                map.addLayer(layer);
+
+            // console.log(name);
+            // console.log(layer);
+            baseLayers[name] = layer;            
+        });
+
+        baseLayers['Empty'] = L.tileLayer(''); 
+        //console.log(baseLayers);
+        loadMapControllers();
+    });
+} 
+
+function loadMapControllers() {
     var options = {
         sortLayers : true,
         collapsed : true
@@ -191,12 +209,6 @@ function initMap() {
         'Mapeamento Miranda': miranda_mapeamento
     }
 
-    // overlayers['AMZ Yearly Deforestation'].addTo(this.map);
-    // overlayers['Deforestation Mask'].addTo(this.map);
-    // overlayers['Forest 2016/2017'].addTo(this.map);
-    // overlayers['Cerrado Yearly Deforestation'].addTo(this.map);
-    // overlayers['Biome Border'].addTo(this.map);
-    
     for (const key in overlayers) {     
         if ('Cerrado Mosaics' === key) continue;   
         overlayers[key].addTo(this.map);        
