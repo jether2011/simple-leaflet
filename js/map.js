@@ -1,7 +1,7 @@
 var map;
 var latitude = -55.685277;
 var longitude = -10.3;
-var host_api = "http://terrabrasilis2.dpi.inpe.br:13003/api/v1";
+var host_api = "http://terrabrasilis.dpi.inpe.br/business/api/v1";
 
 let baseLayers = {};
 let overLayers = {};
