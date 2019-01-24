@@ -29,47 +29,58 @@ function loadBaseLayers() {
         url: api,
         async: true,        
     }).done(function (data) { 
-        let layers = new Array();
+        let baselayers = new Array();
+        let overlayers = new Array();
 
         data.forEach(e => {
             e.vision.layers.forEach(l => {
                 if(l.baselayer)
-                    layers.push(l);
+                    baselayers.push(l);
+                else
+                    overlayers.push(l);
             });
 
             e.visions.forEach(e => {
                 e.layers.forEach(l => {
                     if(l.baselayer)
-                        layers.push(l);
+                        baselayers.push(l);
+                    else
+                        overlayers.push(l);
                 });                
             });
         });
 
-        // console.log(layers);
-
-        layers.forEach(l => {
+        baselayers.forEach(l => {
             let domains = new Array();
             l.subdomains.forEach(s => {
                 domains.push(s.name);
             });
 
-            let name = l.title;
-            let layer = L.tileLayer(l.datasource.host, {
+            baseLayers[l.title] = L.tileLayer(l.datasource.host, {
                 maxZoom: 20,                
                 attribution: l.attribution,
                 subdomains: domains
             });
+            
+            if (l.active)
+                baseLayers[l.title].addTo(map);          
+        });
+        baseLayers['Empty'] = L.tileLayer(''); 
+
+        overlayers.forEach(l => {
+            let url = l.datasource.host.replace("ows", "gwc/service/wms");
+
+            overLayers[l.title] = L.tileLayer.wms(url, {
+                layers: l.workspace + ':' + l.name,
+                format: 'image/png',
+                transparent: true,
+                tiled: true
+            });
 
             if (l.active)
-                map.addLayer(layer);
-
-            // console.log(name);
-            // console.log(layer);
-            baseLayers[name] = layer;            
+                overLayers[l.title].addTo(map); 
         });
 
-        baseLayers['Empty'] = L.tileLayer(''); 
-        //console.log(baseLayers);
         loadMapControllers();
     });
 } 
@@ -80,146 +91,10 @@ function loadMapControllers() {
         collapsed : true
     }
     
-    let layers = ["yearly_deforestation_2013_2018", "accumulated_deforestation_1988_2012", "hydrography", "no_forest", "cloud", "brazilian_legal_amazon"
-        , "estados", "prodes_cerrado_2000_2017_uf_mun", "limite_cerrado", "municipios_2017", "cerrado_mosaics"];
-    
-    let host = "http://terrabrasilis.dpi.inpe.br/geoserver/gwc/service/wms";    
-    let amz_workspace = "prodes-amz";
-    let cerrado_workspace = "prodes-cerrado";
-    
-    /**
-     * Prodes AMZ
-     */
-    var forest = L.tileLayer.wms(host, {
-        layers: amz_workspace + ':forest',
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    }); 
-    
-    var yearly_deforestation_2013_2018 = L.tileLayer.wms(host, {
-        layers: amz_workspace + ':' + layers[0],
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    var accumulated_deforestation_1988_2012 = L.tileLayer.wms(host, {
-        layers: amz_workspace + ':' + layers[1],
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    var hydrography = L.tileLayer.wms(host, {
-        layers: amz_workspace + ':' + layers[2],
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    var no_forest = L.tileLayer.wms(host, {
-        layers: amz_workspace + ':' + layers[3],
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    var cloud = L.tileLayer.wms(host, {
-        layers: amz_workspace + ':' + layers[4],
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    var brazilian_legal_amazon = L.tileLayer.wms(host, {
-        layers: amz_workspace + ':' + layers[5],
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    /**
-     * Prodes Cerrado
-     */
-    var estados = L.tileLayer.wms(host, {
-        layers: cerrado_workspace + ':' + layers[6],
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    var prodes_cerrado_2000_2017_uf_mun = L.tileLayer.wms(host, {
-        layers: cerrado_workspace + ':' + layers[7],
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    var limite_cerrado = L.tileLayer.wms(host, {
-        layers: cerrado_workspace + ':' + layers[8],
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    var municipios_2017 = L.tileLayer.wms(host, {
-        layers: cerrado_workspace + ':' + layers[9],
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    var cerrado_mosaics = L.tileLayer.wms(host, {
-        layers: cerrado_workspace + ':' + layers[10],
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    /**
-     * Bacia Miranda
-     */    
-    var miranda_mapeamento = L.tileLayer.wms(host, {
-        layers: 'miranda:mapeamento',
-        format: 'image/png',
-        transparent: true,
-        tiled: true
-    });
-
-    /**
-     * Overlayers
-     */
-    var overlayers = {
-        // AMZ
-        'Forest 2016/2017': forest,
-        'AMZ Yearly Deforestation': yearly_deforestation_2013_2018,
-        'Deforestation Mask': accumulated_deforestation_1988_2012,
-        'Hydrography': hydrography,
-        'No Forest': no_forest,
-        'Cloud': cloud,
-        'Legal Amazon': brazilian_legal_amazon,
-
-        // Cerrado
-        'States': estados,
-        'Cerrado Yearly Deforestation': prodes_cerrado_2000_2017_uf_mun,
-        'Biome Border': limite_cerrado,
-        'Counties': municipios_2017, 
-        'Cerrado Mosaics': cerrado_mosaics,
-
-        // Bacia Miranda
-        'Mapeamento Miranda': miranda_mapeamento
-    }
-
-    for (const key in overlayers) {     
-        if ('Cerrado Mosaics' === key) continue;   
-        overlayers[key].addTo(this.map);        
-    }
-
     /**
      * Add Baselayers and Overlayers to map
      */
-    L.control.layers(baseLayers, overlayers, options).addTo(map);
+    L.control.layers(baseLayers, overLayers, options).addTo(map);
 
     /**
      * Scale tool
