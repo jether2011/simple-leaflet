@@ -7,6 +7,8 @@ let baseLayers = {};
 let overLayers = {};
 
 $( document ).ready(function() {
+    $("body").loading();
+
     loadMapOnly();	
 });
 
@@ -223,4 +225,9 @@ function loadMapControllers() {
      * Scale tool
      */
     L.control.scale().addTo(map);
+
+    /**
+     * Stop the animation
+     */
+    $('body').loading('stop');
 }
