@@ -1005,7 +1005,7 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
 
     _parseTimeDimensionFromCapabilities: function(xml) {
         var layers = xml.querySelectorAll('Layer[queryable="1"]');
-        var layerName = this._baseLayer.wmsParams.layers;
+        var layerName = (this._getCapabilitiesAlternateLayerName)?(this._getCapabilitiesAlternateLayerName):(this._baseLayer.wmsParams.layers);
         var layer = null;
         var times = null;
 
@@ -1040,7 +1040,7 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
 
     _getDefaultTimeFromCapabilities: function(xml) {
         var layers = xml.querySelectorAll('Layer[queryable="1"]');
-        var layerName = this._baseLayer.wmsParams.layers;
+        var layerName = (this._getCapabilitiesAlternateLayerName)?(this._getCapabilitiesAlternateLayerName):(this._baseLayer.wmsParams.layers);
         var layer = null;
         var times = null;
 
@@ -1064,11 +1064,11 @@ L.TimeDimension.Layer.WMS = L.TimeDimension.Layer.extend({
         var defaultTime = 0;
         var dimensions = layer.querySelectorAll("Dimension[name='time']");
         if (dimensions && dimensions.length && dimensions[0].attributes.default) {
-            defaultTime = dimensions[0].attributes.default;
+            defaultTime = dimensions[0].attributes.default.textContent.trim();
         } else {
             var extents = layer.querySelectorAll("Extent[name='time']");
             if (extents && extents.length && extents[0].attributes.default) {
-                defaultTime = extents[0].attributes.default;
+                defaultTime = extents[0].attributes.default.textContent.trim();
             }
         }
         return defaultTime;
@@ -1725,6 +1725,15 @@ L.Control.TimeDimension = L.Control.extend({
         speedStep: 0.1,
         timeSteps: 1,
         autoPlay: false,
+        formatDate: {
+            /*
+            Use intL options to format date that display
+            https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DateTimeFormat
+            */
+            formatMatcher: {year:'numeric',month:'numeric',day:'numeric'},
+            locale: 'en-US',
+            separator: '/'
+        },
         playerOptions: {
             transitionTime: 1000
         }
@@ -2174,8 +2183,23 @@ L.Control.TimeDimension = L.Control.extend({
     },
 
     _getDisplayDateFormat: function(date) {
-        return this._dateUTC ? date.toISOString() : date.toLocaleString();
+        if(this.options.formatDate){
+            return this._getDisplayDateMasquerade(date);
+        }else{
+            return this._dateUTC ? date.toISOString() : date.toLocaleString();
+        }
     },
+
+    _getDisplayDateMasquerade: function(date) {
+        var dt=new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+        dt=dt.toLocaleDateString(this.options.formatDate.locale,this.options.formatDate.formatMatcher);
+        if(this.options.formatDate.separator){
+            dt=dt.split('/')
+            .join(this.options.formatDate.separator);
+        }
+        return dt;
+    },
+
     _getDisplaySpeed: function(fps) {
         return fps + 'fps';
     },
