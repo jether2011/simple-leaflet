@@ -51,7 +51,7 @@ L.TimeDimension = (L.Layer || L.Class).extend({
 
     getCurrentTimeIndex: function () {
         if (this._currentTimeIndex === -1) {
-            return this._availableTimes.length - 1;
+            return (this._availableTimes.length)?(0):(this._availableTimes.length - 1);
         }
         return this._currentTimeIndex;
     },
@@ -291,12 +291,21 @@ L.TimeDimension = (L.Layer || L.Class).extend({
     },
 
     _getDefaultCurrentTime: function () {
-        var index = this._seekNearestTimeIndex(new Date().getTime());
+        var refTime = new Date().getTime();
+        if(this._availableTimes.length){
+            // if lack default Time we define the first Time from the time list as default.
+            refTime = this._availableTimes[0];
+        }
+        var index = this._seekNearestTimeIndex(refTime);
         return this._availableTimes[index];
     },
 
     _seekNearestTimeIndex: function (time) {
         var newIndex = 0;
+        // when default time for layer is one interval (startDate/endDate)
+        if(isNaN(time)){
+            return newIndex;
+        }
         var len = this._availableTimes.length;
         for (; newIndex < len; newIndex++) {
             if (time < this._availableTimes[newIndex]) {

@@ -13,6 +13,12 @@
     top: 10px;
     left: 10px;
 }
+.time-hidden{
+  display: none;
+}
+.time-show{
+  display: inline;
+}
 </style>
 
 <title>Teste Leaflet - TimeDimension</title>
@@ -32,8 +38,8 @@
   </section>
 
   <div class="onOffTimers">
-    <button type="button" class="btn btn-default" onclick="onOffTimeDimension('prodes-cerrado:prodes_cerrado_2000_2018_uf_mun')">Deforestation</button>
-    <button type="button" class="btn btn-default" onclick="onOffTimeDimension('prodes-cerrado:temporal_mosaic')">Mosaic</button>
+    <button type="button" class="btn btn-default time-hidden" id="btn_time_prodes_cerrado_2000_2018_uf_mun" onclick="onOffTimeDimension('prodes_cerrado_2000_2018_uf_mun')">Deforestation</button>
+    <button type="button" class="btn btn-default time-hidden" id="btn_time_temporal_mosaic" onclick="onOffTimeDimension('temporal_mosaic')">Mosaic</button>
   </div>
 
   <div id="custom-overlay">

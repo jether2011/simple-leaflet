@@ -5,6 +5,11 @@ var host_api = "http://terrabrasilis2.dpi.inpe.br:13003/api/v1";
 
 let baseLayers = {};
 let overLayers = {};
+let timeConfigLayers = [];// store the default configurations for construct the TimeDimension layers when its needed.
+let overLayersTD = {};// The created instances of the TimeDimension layers
+
+let generalZIndex=0;
+let layerControl;
 
 // to control the enable or disable TimeDimension component
 let ctrlTimer={control:null,layer:null};
@@ -12,7 +17,7 @@ let ctrlTimer={control:null,layer:null};
 $( document ).ready(function() {
     $("body").loading();
 
-    loadMapOnly();	
+    loadMapOnly();
 });
 
 function loadMapOnly() {
@@ -20,11 +25,13 @@ function loadMapOnly() {
         scrollWheelZoom: true,
         fullscreenControl: {
             pseudoFullscreen: false
-        },
-        timeDimension: true
+        }
+        //timeDimension: true
     }).setView([longitude, latitude], 5);
-    map.on('overlayremove', onRemoveOverlay);
+    //map.on('overlayremove', onRemoveOverlay);
     //map.on('overlayadd', onAddOverlay);
+    map.on('layeradd', onLayerAdd);
+    map.on('layerremove', onLayerRemove);
 
     loadBaseLayers();
 }
@@ -93,34 +100,15 @@ function loadBaseLayers() {
 
         overlayers.forEach(l => {
 
-            //let url = (l.capabilitiesUrl && l.capabilitiesUrl!="")?(l.datasource.host):(l.datasource.host.replace("ows", "gwc/service/wms"));
-            let url = l.datasource.host.replace("ows", "gwc/service/wms");
-
-            var leafletLayer = L.tileLayer.wms(url, {
-                layers: l.workspace + ':' + l.name,
-                format: 'image/png',
-                transparent: true,
-                tiled: true,
-                attribution: 'INPE/OBT/DPI/TerraBrasilis'
-            });
+            var leafletLayer=createLeafletLayerFromConfig(l);
 
             if(l.capabilitiesUrl && l.capabilitiesUrl!="") {
-                var tdOptions={
-                    requestTimeFromCapabilities: true,
-                    getCapabilitiesUrl: l.datasource.host.replace("ows", l.workspace + "/" + l.name+"/ows"),
-                    setDefaultTime: true,
-                    getCapabilitiesLayerName: l.name,
-                    wmsVersion: "1.3.0"
-                    // getCapabilitiesParams: {
-                    //     updateSequence:1
-                    // }
-                };
-                overLayers[l.title] = L.timeDimension.layer.wms(leafletLayer,tdOptions);
-                // If any layer have a Time Dimension so we add the timedimension component to the map
-                // L.TimeDimension().addTo(map);
-            }else{
-                overLayers[l.title] = leafletLayer;
+                // Show one button to enable/disable the TimerControl over map.
+                console.log("The layer "+l.name+" have time dimension.");
+                timeConfigLayers.push(l);
             }
+
+            overLayers[l.title] = leafletLayer;
 
             if (l.active)
                 overLayers[l.title].addTo(map);
@@ -130,25 +118,105 @@ function loadBaseLayers() {
     });
 }
 
+function createLeafletLayerFromConfig(layerConfig) {
+    let url = layerConfig.datasource.host.replace("ows", "gwc/service/wms");
+
+    generalZIndex++;
+
+    return L.tileLayer.wms(url, {
+        layers: layerConfig.workspace + ':' + layerConfig.name,
+        format: 'image/png',
+        transparent: true,
+        tiled: true,
+        zIndex: generalZIndex,
+        attribution: 'INPE/OBT/DPI/TerraBrasilis'
+    });
+}
+
+function createTimeDimensionLayerFromConfig(layerConfig) {
+    var tdOptions={
+        timeDimension: ctrlTimer.timeDimension,
+        requestTimeFromCapabilities: true,
+        getCapabilitiesUrl: layerConfig.datasource.host.replace("ows", layerConfig.workspace + "/" + layerConfig.name+"/ows"),
+        setDefaultTime: true,
+        getCapabilitiesLayerName: layerConfig.name,
+        wmsVersion: "1.3.0"
+        // getCapabilitiesParams: {
+        //     updateSequence:1
+        // }
+    };
+
+    return L.timeDimension.layer.wms(overLayers[layerConfig.title],tdOptions);
+}
+/**
+ * Create TimeDimension Layer if it not exists and add it to map.
+ * Before add TimeDimension to map, removes the default Leaflef Layer from the map.
+ * 
+ * @param {string} layerName, the layer name
+ */
+function addLayerTimeDimension(layerName) {
+
+    var hasTimeLayer=getTimeLayer(layerName);
+
+    if(hasTimeLayer) {
+        
+        overLayers[hasTimeLayer.title].removeFrom(map);// Removing the default Leaflef Layer from the map.
+
+        if(!overLayersTD[hasTimeLayer.title]){
+            overLayersTD[hasTimeLayer.title] = createTimeDimensionLayerFromConfig(hasTimeLayer);
+        }
+        overLayersTD[hasTimeLayer.title].addTo(map);// Adding TimeDimension Layer to the map.
+    }
+    return hasTimeLayer;
+}
+
+function addLeafletLayer(layerName) {
+    var hasTimeLayer=getTimeLayer(layerName);
+
+    if(hasTimeLayer) {
+
+        // remove old layer from layerControl
+        layerControl.removeLayer(overLayers[hasTimeLayer.title]);
+
+        // create and add new leaflet layer into map and layerControl
+        var leafletLayer=createLeafletLayerFromConfig(hasTimeLayer);
+        leafletLayer.addTo(map);
+        layerControl.addOverlay(leafletLayer,hasTimeLayer.title);
+        overLayers[hasTimeLayer.title] = leafletLayer;
+    }
+}
+
 function onOffTimeDimension(layerName) {
     if(ctrlTimer.control && ctrlTimer.layer==layerName) {
-        removeTimerControl(layerName);
+        removeTimerControl();
+        addLeafletLayer(layerName);
     }else{
+        removeTimerControl();
+        if(ctrlTimer.layer!=layerName) {
+            addLeafletLayer(ctrlTimer.layer);
+        }
         addTimerControl(layerName);
     }
 }
 
-function removeTimerControl(layerName) {
-    if(ctrlTimer.control && ctrlTimer.layer==layerName){
-        ctrlTimer.control.remove(map);
-        ctrlTimer.control=null;
-        ctrlTimer.layer=null;
+function removeTimerControl() {
+    if(ctrlTimer.control){
+        var l = getTimeLayer(ctrlTimer.layer);
+        if(l){
+            ctrlTimer.control.remove(map);
+            overLayersTD[l.title].removeFrom(map);
+        }
     }
 }
 
 function addTimerControl(layerName) {
 
+    if(!ctrlTimer.timeDimension){
+        ctrlTimer.timeDimension = new L.TimeDimension();
+    }
+    
     var options={
+        timeDimension: ctrlTimer.timeDimension,
         limitSliders: false,
         formatDate: {
             formatMatcher: {year:'numeric',month:'numeric',day:'numeric'},
@@ -158,16 +226,73 @@ function addTimerControl(layerName) {
     
     ctrlTimer.control=L.control.timeDimension(options).addTo(map);
     ctrlTimer.layer=layerName;
+    if(addLayerTimeDimension(layerName)){
+        console.log("Enable TimeDimension support to the "+layerName+" Layer.");
+    }else{
+        console.log("Failure TimeDimension support to the "+layerName+" Layer.");
+    }
 }
 
+/*
 function onRemoveOverlay(event) {
-    if(event.layer._baseLayer && event.layer._baseLayer.options && event.layer._baseLayer.options.layers)
-        removeTimerControl(event.layer._baseLayer.options.layers);
+    if(event.layer && event.layer.options && event.layer.options.layers)
+    {
+        var l = getTimeLayer(event.layer.options.layers);
+        if(l && overLayers[l.title]) overLayers[l.title].removeFrom(map);
+    }
 }
 
 function onAddOverlay(event) {
-    if(event.layer._baseLayer && event.layer._baseLayer.options && event.layer._baseLayer.options.layers)
-        addTimerControl(event.layer._baseLayer.options.layers);
+    if(event.layer && event.layer.options && event.layer.options.layers)
+    {
+        var l = getTimeLayer(event.layer.options.layers);
+        if(l && overLayers[l.title]) overLayers[l.title].addTo(map);
+    }
+    
+}
+*/
+
+/**
+ * When one layer is removed from map by click on layerControl
+ * @param {*} event 
+ */
+function onLayerRemove(event) {
+    if(event.layer && event.layer.wmsParams
+        && event.layer.wmsParams.layers
+        && (!event.layer.wmsParams.time || event.layer.wmsParams.time==="") )
+    {
+        var ln=(event.layer.wmsParams.layers.indexOf(':')>0)?(event.layer.wmsParams.layers.split(':')[1]):(event.layer.wmsParams.layers);
+        if($('#btn_time_'+ln)){
+            $('#btn_time_'+ln).addClass('time-hidden');// hide the TimeDimension button
+        }
+    }
+}
+
+function onLayerAdd(event) {
+    if(event.layer && event.layer.wmsParams
+        && event.layer.wmsParams.layers
+        && (!event.layer.wmsParams.time || event.layer.wmsParams.time==="") )
+    {
+        var ln=(event.layer.wmsParams.layers.indexOf(':')>0)?(event.layer.wmsParams.layers.split(':')[1]):(event.layer.wmsParams.layers);
+        if($('#btn_time_'+ln)){
+            $('#btn_time_'+ln).removeClass('time-hidden');// show the TimeDimension button
+        }
+    }
+    
+}
+
+function getTimeLayer(layerName) {
+    if(layerName) {
+        if(layerName.indexOf(':')>0){
+            layerName=layerName.split(':')[1];
+        }
+        return timeConfigLayers.find(function(layer){
+            if(layer.name==layerName) {
+                return layer;
+            }
+        });
+    }
+    return null;
 }
 
 function loadMapControllers() {
@@ -179,30 +304,13 @@ function loadMapControllers() {
     /**
      * Add Baselayers and Overlayers to map
      */
-    L.control.layers(baseLayers, overLayers, options).addTo(map);
+    layerControl=L.control.layers(baseLayers, overLayers, options).addTo(map);
 
     /**
      * Scale tool
      */
     L.control.scale().addTo(map);
 
-
-    // if(hasTemporalLayers) {
-    //     var options={
-    //         formatDate: {
-    //             formatMatcher: {year:'numeric',month:'numeric',day:'numeric'},
-    //             locale: 'pt-BR'
-    //         }
-    //     };
-    //     ctrlTimer=L.control.timeDimension(options).addTo(map);
-
-    //     /*
-    //     {
-    //         timeInterval: "P1Y/"+(new Date()).toISOString(),
-    //         period: "P1Y"
-    //     }
-    //     */
-    // }
 
     /**
      * Stop the animation
